@@ -53,96 +53,45 @@ for epoch = 1 : epochs
         acc_b3_grad = zeros(10,1);
         acc_w3_grad = zeros(10,50);
         
-        for i = 1:batchsize
-            % x : input value: 784x1
-            x = X((b-1)*batchsize + i,:)';
-            
-            % encode answer
-            t = zeros(10,1);
-            t(Y((b-1)*batchsize + i,1)) = 1;
-            
-            [pred, x_grad, b1_grad, w1_grad, b2_grad, w2_grad, b3_grad, w3_grad] = run(x,t,b1,w1,b2,w2,b3,w3);
-            acc_b1_grad = acc_b1_grad + b1_grad;
-            acc_w1_grad = acc_w1_grad + w1_grad;
-            acc_b2_grad = acc_b2_grad + b2_grad;
-            acc_w2_grad = acc_w2_grad + w2_grad;
-            acc_b3_grad = acc_b3_grad + b3_grad;
-            acc_w3_grad = acc_w3_grad + w3_grad;
-        end;
-        acc_b1_grad = acc_b1_grad ./ batchsize;
-        acc_w1_grad = acc_w1_grad ./ batchsize;
-        acc_b2_grad = acc_b2_grad ./ batchsize;
-        acc_w2_grad = acc_w2_grad ./ batchsize;
-        acc_b3_grad = acc_b3_grad ./ batchsize;
-        acc_w3_grad = acc_w3_grad ./ batchsize;
+        interval = (b-1)*batchsize + 1:b*batchsize;
+        X_tmp = X(interval,:);
+        Y_tmp = Y(interval,:);
         
-        b1 = b1 - alpha*acc_b1_grad;
-        w1 = w1 - alpha*acc_w1_grad;
-        b2 = b2 - alpha*acc_b2_grad;
-        w2 = w2 - alpha*acc_w2_grad;
-        b3 = b3 - alpha*acc_b3_grad;
-        w3 = w3 - alpha*acc_w3_grad;
+        [~, ~, b1_grad, w1_grad, b2_grad, w2_grad, b3_grad, w3_grad] = runVectorized(X_tmp,Y_tmp,b1,w1,b2,w2,b3,w3);.    
+        
+        b1 = b1 - alpha*b1_grad;
+        w1 = w1 - alpha*w1_grad;
+        b2 = b2 - alpha*b2_grad;
+        w2 = w2 - alpha*w2_grad;
+        b3 = b3 - alpha*b3_grad;
+        w3 = w3 - alpha*w3_grad;
     end
-end;
-
-% calculate error on test set
-correct = 0;
-for i = 1:nTest
-    x = Xtest(i,:)';
-    t = zeros(10,1);
-    t(Ytest(i,1)) = 1;
     
-    [pred, x_grad, ~,~,~,~,~,~] = run(x,t,b1,w1,b2,w2,b3,w3);
+    [pred, x_grad, ~,~,~,~,~,~] = runVectorized(Xtest,Ytest,b1,w1,b2,w2,b3,w3);
     [~, pred] = max(pred);
-    correctLabel = Ytest(i,1);
-    if(pred == Ytest(i,1))
-        correct = correct + 1;
-    end
-end;
-display(strcat('Done epoch: ',num2str(epoch), '. Error rate: ',num2str(1 - correct/nTest)));
-
-correctlyClassified = zeros(nTest,1);
-fuckedUp = zeros(nTest,1);
-
-modifiedX = Xtest;
-noise = zeros(size(Xtest));
-correct = 0;
-for i = 1:nTest
-    x = Xtest(i,:)';
-    t = zeros(10,1);
-    t(Ytest(i,1)) = 1;
     
-    [pred, x_grad, ~,~,~,~,~,~] = run(x,t,b1,w1,b2,w2,b3,w3);
-    [~, pred] = max(pred);
-    correctLabel = Ytest(i,1);
-    if(pred == Ytest(i,1))
-        correct = correct + 1;
-        correctlyClassified(i) = 1;
-    end
-    modifiedX(i,:) = modifiedX(i,:) + sign(x_grad')*epsilon;
-    noise(i,:) = sign(x_grad');
+    correct = sum(pred' == Ytest);
+    
+    display(strcat('Done epoch: ',num2str(epoch), '. Error rate: ',num2str(1 - correct/nTest)));
 end;
+
+% store which samples are classified correctly
+correctlyClassified = (pred' == Ytest);
+
+% get sign of gradient
+gradient_sign = sign(x_grad');
+
+% calculate pertubated test samples
+modifiedX = Xtest + gradient_sign*epsilon;
 modifiedX(modifiedX < 0) = 0;
 modifiedX(modifiedX > 1) = 1;
 
-correct = 0;
-for i = 1:nTest
-    
-    x = modifiedX(i,:)';
-    t = zeros(10,1);
-    t(Ytest(i,1)) = 1;
-    
-    [pred, x_grad, ~,~,~,~,~,~] = run(x,t,b1,w1,b2,w2,b3,w3);
-    [~, pred] = max(pred);
-    correctLabel = Ytest(i,1);
-    if(pred == Ytest(i,1))
-        correct = correct + 1;
-    end
-    if(pred ~= Ytest(i,1) && correctlyClassified(i) == 1)
-        fuckedUp(i) = 1;
-    end
-end;
-display(strcat('Error rate with adversial examples: ',num2str(1 - correct/nTest)));
+% predict labels of modified samples
+[modified_pred, ~, ~,~,~,~,~,~] = runVectorized(modifiedX,Ytest,b1,w1,b2,w2,b3,w3);
+[~, modified_pred] = max(modified_pred);
+
+fuckedUp = (modified_pred' ~= Ytest) & correctlyClassified;
+display(strcat('Error rate with adversial examples: ',num2str(1 - sum(modified_pred' == Ytest)/nTest)));
 
 % get fucked up examples
 allIndices = find(fuckedUp == 1);
@@ -154,7 +103,7 @@ for i = 1:3:30
     subplot(10,3,i);
     imshow(reshape(Xtest(chosenIndices(i),:),[28,28]));
     subplot(10,3,i+1);
-    imshow(reshape(noise(chosenIndices(i),:),[28,28]));
+    imshow(reshape(gradient_sign(chosenIndices(i),:),[28,28]));
     subplot(10,3,i+2);
     imshow(reshape(modifiedX(chosenIndices(i),:),[28,28]));
 end

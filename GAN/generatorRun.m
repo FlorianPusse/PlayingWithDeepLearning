@@ -1,27 +1,36 @@
-function [ pred, x_grad, b1_grad,w1_grad,b2_grad,w2_grad] = generatorRun( x,b1_G,w1_G,b2_G,w2_G,b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,early)
-    h0_G = x;
+function [ pred, x_grad, b1_grad,w1_grad,b2_grad,w2_grad] = generatorRun( X,b1,w1,b2,w2,b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,early)
+    n = size(X,1);
+    X = X';
+
+    h0 = X;
     
-    a1_G = b1_G + w1_G * h0_G;
-    h1_G = softplus(a1_G);
-    h1_d_G = exp(a1_G) ./ (exp(a1_G) + 1);
+    a1 = repmat(b1,1,n) + w1 * h0;
+    h1 = softplus(a1);
+    h1_d = exp(a1) ./ (exp(a1) + 1);
 
-    a2_G = b2_G + w2_G * h1_G;
-    h2_G = a2_G;
-    h2_d_G = ones(size(h2_G));
+    a2 = repmat(b2,1,n) + w2 * h1;
+    h2 = a2;
+    h2_d = ones(size(h2));
 
-    pred_G = h2_G;
+    pred = h2;
     
-    [ pred, discriminator_grad ,~,~,~,~] = discriminatorRun(pred_G,b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,early);
+    [ ~, discriminator_grad ,~,~,~,~] = discriminatorRun(pred',b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,early);
 
-    g_G = discriminator_grad;
+    g = discriminator_grad;
     
-    g_G = g_G .* h2_d_G;
-    b2_grad = g_G;
-    w2_grad = g_G*h1_G';
-    g_G = w2_G'*g_G;
+    g = g .* h2_d;
+    b2_grad = g;
+    w2_grad = g*h1';
+    g = w2'*g;
 
-    g_G = g_G .* h1_d_G;
-    b1_grad = g_G;
-    w1_grad = g_G*h0_G';
-    x_grad = w1_G'*g_G;  
+    g = g .* h1_d;
+    b1_grad = g;
+    w1_grad = g*h0';
+    x_grad = w1'*g;
+    
+    b1_grad = mean(b1_grad,2);
+    b2_grad = mean(b2_grad,2);
+
+    w1_grad = w1_grad ./ n;
+    w2_grad = w2_grad ./ n;
 end

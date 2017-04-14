@@ -1,4 +1,4 @@
-mean = 2;
+mean = 4;
 dev = 0.5;
 
 % stepsize used for pretraining
@@ -8,7 +8,7 @@ pretrain_alpha = 0.10;
 pretraining_epochs = 1000;
 
 % stepsize
-alpha = 0.01;
+alpha = 0.007;
 
 % number of dimensions for the noise
 noise_dim = 1;
@@ -20,13 +20,13 @@ hidden_size_D = 8;
 hidden_size_G = 4;
 
 % number of epochs
-epochs = 2000;
+epochs = 5000;
 
 % number of predictions to do after each epoch
 predictionSize = 1000;
 
 % standart deviation used for normal initalization of weights
-init_dev = 0.3;
+init_dev = 0.2;
 
 % batchsize
 batchsize = 100;
@@ -61,76 +61,33 @@ w2_G = normrnd(0,init_dev,[1,hidden_size_G]);
 % b2: second layer bias
 b2_G = zeros(1,1);
 
+% plot the original distribution
+figure;
+histfit(normrnd(mean,dev,1000,1));
+
 % only used for storing values to display later on
 predictions = zeros(predictionSize,epochs);
 disc = zeros(length(-8:0.01:8),epochs);
 
-for epoch = 1:pretraining_epochs
-    acc_b1_D_grad = zeros(hidden_size_D,1);
-    acc_w1_D_grad = zeros(hidden_size_D,1);
-    acc_b2_D_grad = zeros(hidden_size_D,1);
-    acc_w2_D_grad = zeros(hidden_size_D,hidden_size_D);
-    acc_b3_D_grad = zeros(hidden_size_D,1);
-    acc_w3_D_grad = zeros(hidden_size_D,hidden_size_D);
-    acc_b4_D_grad = zeros(1,1);
-    acc_w4_D_grad = zeros(1,hidden_size_D);
-    
+for epoch = 1:pretraining_epochs    
     % sample from range (-7,7) and check the probability of samples values
     randValues = sort(2*(mean+2)*rand([batchsize,1])-(mean+2));
     probabilities = normpdf(randValues,mean,dev);
     
-    for i = 1 : batchsize
-        [ ~, ~, b1_D_grad,w1_D_grad,b2_D_grad,w2_D_grad,b3_D_grad,w3_D_grad,b4_D_grad,w4_D_grad] = pretrainRun( randValues(i,:) ,b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,probabilities(i,:));
-        
-        acc_b1_D_grad = acc_b1_D_grad + b1_D_grad;
-        acc_w1_D_grad = acc_w1_D_grad + w1_D_grad;
-        acc_b2_D_grad = acc_b2_D_grad + b2_D_grad;
-        acc_w2_D_grad = acc_w2_D_grad + w2_D_grad;
-        acc_b3_D_grad = acc_b3_D_grad + b3_D_grad;
-        acc_w3_D_grad = acc_w3_D_grad + w3_D_grad;
-        acc_b4_D_grad = acc_b4_D_grad + b4_D_grad;
-        acc_w4_D_grad = acc_w4_D_grad + w4_D_grad;
-    end
+    [ ~, ~, b1_D_grad,w1_D_grad,b2_D_grad,w2_D_grad,b3_D_grad,w3_D_grad,b4_D_grad,w4_D_grad] = pretrainRun( randValues ,b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,probabilities);
     
-    acc_b1_D_grad = acc_b1_D_grad ./ batchsize;
-    acc_w1_D_grad = acc_w1_D_grad ./ batchsize;
-    acc_b2_D_grad = acc_b2_D_grad ./ batchsize;
-    acc_w2_D_grad = acc_w2_D_grad ./ batchsize;
-    acc_b3_D_grad = acc_b3_D_grad ./ batchsize;
-    acc_w3_D_grad = acc_w3_D_grad ./ batchsize;
-    acc_b4_D_grad = acc_b4_D_grad ./ batchsize;
-    acc_w4_D_grad = acc_w4_D_grad ./ batchsize;
-    
-    b1_D = b1_D - pretrain_alpha*acc_b1_D_grad;
-    w1_D = w1_D - pretrain_alpha*acc_w1_D_grad;
-    b2_D = b2_D - pretrain_alpha*acc_b2_D_grad;
-    w2_D = w2_D - pretrain_alpha*acc_w2_D_grad;
-    b3_D = b3_D - pretrain_alpha*acc_b3_D_grad;
-    w3_D = w3_D - pretrain_alpha*acc_w3_D_grad;
-    b4_D = b4_D - pretrain_alpha*acc_b4_D_grad;
-    w4_D = w4_D - pretrain_alpha*acc_w4_D_grad;
+    b1_D = b1_D - pretrain_alpha*b1_D_grad;
+    w1_D = w1_D - pretrain_alpha*w1_D_grad;
+    b2_D = b2_D - pretrain_alpha*b2_D_grad;
+    w2_D = w2_D - pretrain_alpha*w2_D_grad;
+    b3_D = b3_D - pretrain_alpha*b3_D_grad;
+    w3_D = w3_D - pretrain_alpha*w3_D_grad;
+    b4_D = b4_D - pretrain_alpha*b4_D_grad;
+    w4_D = w4_D - pretrain_alpha*w4_D_grad;
 end
 
 for epoch = 1:epochs
-    for k_it = 1:k
-        acc_b1_D_grad = zeros(hidden_size_D,1);
-        acc_w1_D_grad = zeros(hidden_size_D,1);
-        acc_b2_D_grad = zeros(hidden_size_D,1);
-        acc_w2_D_grad = zeros(hidden_size_D,hidden_size_D);
-        acc_b3_D_grad = zeros(hidden_size_D,1);
-        acc_w3_D_grad = zeros(hidden_size_D,hidden_size_D);
-        acc_b4_D_grad = zeros(1,1);
-        acc_w4_D_grad = zeros(1,hidden_size_D);
-        
-        acc_b1_D2_grad = zeros(hidden_size_D,1);
-        acc_w1_D2_grad = zeros(hidden_size_D,1);
-        acc_b2_D2_grad = zeros(hidden_size_D,1);
-        acc_w2_D2_grad = zeros(hidden_size_D,hidden_size_D);
-        acc_b3_D2_grad = zeros(hidden_size_D,1);
-        acc_w3_D2_grad = zeros(hidden_size_D,hidden_size_D);
-        acc_b4_D2_grad = zeros(1,1);
-        acc_w4_D2_grad = zeros(1,hidden_size_D);
-        
+    for k_it = 1:k        
         % sample from data distribution
         realData = sort(normrnd(mean,dev,[batchsize,1]));
         
@@ -138,107 +95,42 @@ for epoch = 1:epochs
         noise_D = sampleNoise(batchsize);
         
         % apply generator to noise
-        generatedData = zeros(batchsize,1);
-        for j = 1 : batchsize
-            generatedData(j,:) = generatorForward(noise_D(j,:)',b1_G,w1_G,b2_G,w2_G);
-        end
-        generatedData = sort(generatedData);
+        generatedData = generatorForward(noise_D,b1_G,w1_G,b2_G,w2_G);
+        generatedData = sort(generatedData)';
         
-        for j = 1 : batchsize
-            [ ~, ~, b1_D_grad,w1_D_grad,b2_D_grad,w2_D_grad,b3_D_grad,w3_D_grad,b4_D_grad,w4_D_grad] = discriminatorRun( realData(j,:) ,b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,true);
-            
-            acc_b1_D_grad = acc_b1_D_grad + b1_D_grad;
-            acc_w1_D_grad = acc_w1_D_grad + w1_D_grad;
-            acc_b2_D_grad = acc_b2_D_grad + b2_D_grad;
-            acc_w2_D_grad = acc_w2_D_grad + w2_D_grad;
-            acc_b3_D_grad = acc_b3_D_grad + b3_D_grad;
-            acc_w3_D_grad = acc_w3_D_grad + w3_D_grad;
-            acc_b4_D_grad = acc_b4_D_grad + b4_D_grad;
-            acc_w4_D_grad = acc_w4_D_grad + w4_D_grad;
-            
-            [ ~, ~, b1_D_grad,w1_D_grad,b2_D_grad,w2_D_grad,b3_D_grad,w3_D_grad,b4_D_grad,w4_D_grad] = discriminatorRun( generatedData(j,:) ,b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,false);
-            
-            acc_b1_D2_grad = acc_b1_D2_grad + b1_D_grad;
-            acc_w1_D2_grad = acc_w1_D2_grad + w1_D_grad;
-            acc_b2_D2_grad = acc_b2_D2_grad + b2_D_grad;
-            acc_w2_D2_grad = acc_w2_D2_grad + w2_D_grad;
-            acc_b3_D2_grad = acc_b3_D2_grad + b3_D_grad;
-            acc_w3_D2_grad = acc_w3_D2_grad + w3_D_grad;
-            acc_b4_D2_grad = acc_b4_D2_grad + b4_D_grad;
-            acc_w4_D2_grad = acc_w4_D2_grad + w4_D_grad;
-        end
+        [ ~, ~, b1_D_grad,w1_D_grad,b2_D_grad,w2_D_grad,b3_D_grad,w3_D_grad,b4_D_grad,w4_D_grad] = discriminatorRun( realData ,b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,true);
+        [ ~, ~, b1_D2_grad,w1_D2_grad,b2_D2_grad,w2_D2_grad,b3_D2_grad,w3_D2_grad,b4_D2_grad,w4_D2_grad] = discriminatorRun( generatedData ,b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,false);        
         
-        acc_b1_D_grad = acc_b1_D_grad ./ batchsize;
-        acc_w1_D_grad = acc_w1_D_grad ./ batchsize;
-        acc_b2_D_grad = acc_b2_D_grad ./ batchsize;
-        acc_w2_D_grad = acc_w2_D_grad ./ batchsize;
-        acc_b3_D_grad = acc_b3_D_grad ./ batchsize;
-        acc_w3_D_grad = acc_w3_D_grad ./ batchsize;
-        acc_b4_D_grad = acc_b4_D_grad ./ batchsize;
-        acc_w4_D_grad = acc_w4_D_grad ./ batchsize;
-        
-        acc_b1_D2_grad = acc_b1_D2_grad ./ batchsize;
-        acc_w1_D2_grad = acc_w1_D2_grad ./ batchsize;
-        acc_b2_D2_grad = acc_b2_D2_grad ./ batchsize;
-        acc_w2_D2_grad = acc_w2_D2_grad ./ batchsize;
-        acc_b3_D2_grad = acc_b3_D2_grad ./ batchsize;
-        acc_w3_D2_grad = acc_w3_D2_grad ./ batchsize;
-        acc_b4_D2_grad = acc_b4_D2_grad ./ batchsize;
-        acc_w4_D2_grad = acc_w4_D2_grad ./ batchsize;
-        
-        b1_D = b1_D + alpha*(acc_b1_D_grad + acc_b1_D2_grad);
-        w1_D = w1_D + alpha*(acc_w1_D_grad + acc_w1_D2_grad);
-        b2_D = b2_D + alpha*(acc_b2_D_grad + acc_b2_D2_grad);
-        w2_D = w2_D + alpha*(acc_w2_D_grad + acc_w2_D2_grad);
-        b3_D = b3_D + alpha*(acc_b3_D_grad + acc_b3_D2_grad);
-        w3_D = w3_D + alpha*(acc_w3_D_grad + acc_w3_D2_grad);
-        b4_D = b4_D + alpha*(acc_b4_D_grad + acc_b4_D2_grad);
-        w4_D = w4_D + alpha*(acc_w4_D_grad + acc_w4_D2_grad);
-    end
-    
-    acc_b1_G_grad = zeros(hidden_size_G,1);
-    acc_w1_G_grad = zeros(hidden_size_G,noise_dim);
-    acc_b2_G_grad = zeros(1,1);
-    acc_w2_G_grad = zeros(1,hidden_size_G);
+        b1_D = b1_D + alpha*(b1_D_grad + b1_D2_grad);
+        w1_D = w1_D + alpha*(w1_D_grad + w1_D2_grad);
+        b2_D = b2_D + alpha*(b2_D_grad + b2_D2_grad);
+        w2_D = w2_D + alpha*(w2_D_grad + w2_D2_grad);
+        b3_D = b3_D + alpha*(b3_D_grad + b3_D2_grad);
+        w3_D = w3_D + alpha*(w3_D_grad + w3_D2_grad);
+        b4_D = b4_D + alpha*(b4_D_grad + b4_D2_grad);
+        w4_D = w4_D + alpha*(w4_D_grad + w4_D2_grad); 
+    end;
     
     noise_G = sampleNoise(batchsize);
     % apply generator to noise
-    generatedData = zeros(batchsize,1);
-    for j = 1 : batchsize
-        generatedData(j,:) = generatorForward(noise_G(j,:),b1_G,w1_G,b2_G,w2_G);
-    end
+    generatedData = generatorForward(noise_G,b1_G,w1_G,b2_G,w2_G);
     generatedData = sort(generatedData);
     
-    for j = 1 : batchsize
-        [ ~, ~, b1_G_grad,w1_G_grad,b2_G_grad,w2_G_grad] = generatorRun( noise_G(j,:)',b1_G,w1_G,b2_G,w2_G,b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,false);
-        
-        acc_b1_G_grad = acc_b1_G_grad + b1_G_grad;
-        acc_w1_G_grad = acc_w1_G_grad + w1_G_grad;
-        acc_b2_G_grad = acc_b2_G_grad + b2_G_grad;
-        acc_w2_G_grad = acc_w2_G_grad + w2_G_grad;
-    end
+    [ ~, ~, b1_G_grad,w1_G_grad,b2_G_grad,w2_G_grad] = generatorRun( noise_G,b1_G,w1_G,b2_G,w2_G,b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,false);
     
-    acc_b1_G_grad = acc_b1_G_grad ./ batchsize;
-    acc_w1_G_grad = acc_w1_G_grad ./ batchsize;
-    acc_b2_G_grad = acc_b2_G_grad ./ batchsize;
-    acc_w2_G_grad = acc_w2_G_grad ./ batchsize;
-    
-    b1_G = b1_G - alpha*acc_b1_G_grad;
-    w1_G = w1_G - alpha*acc_w1_G_grad;
-    b2_G = b2_G - alpha*acc_b2_G_grad;
-    w2_G = w2_G - alpha*acc_w2_G_grad;
+    b1_G = b1_G - alpha*b1_G_grad;
+    w1_G = w1_G - alpha*w1_G_grad;
+    b2_G = b2_G - alpha*b2_G_grad;
+    w2_G = w2_G - alpha*w2_G_grad;
     
     % sample from noise distribution
     noise = sampleNoise(predictionSize);
-    for j = 1 : predictionSize
-        [pred] = generatorForward(noise(j,:)',b1_G,w1_G,b2_G,w2_G);
-        predictions(j,epoch) = pred;
-    end;
+    [pred] = generatorForward(noise,b1_G,w1_G,b2_G,w2_G);
+    predictions(:,epoch) = pred;
+
     % sample for discriminator
     indices = -8:0.01:8;
-    for i = 1:length(indices);
-        [ disc(i,epoch), x_grad, b1_grad,w1_grad,b2_grad,w2_grad,b3_grad,w3_grad,b4_grad,w4_grad] = discriminatorRun(indices(i),b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,true);
-    end
+    [ disc(:,epoch), x_grad, b1_grad,w1_grad,b2_grad,w2_grad,b3_grad,w3_grad,b4_grad,w4_grad] = discriminatorRun(indices',b1_D,w1_D,b2_D,w2_D,b3_D,w3_D,b4_D,w4_D,true);
 end
 
 if true
