@@ -15,6 +15,9 @@ alpha = 0.03;
 % number of dimensions for the noise
 noise_dim = 1;
 
+% number of dimensions for the input of the discriminator
+input_dim = 1;
+
 % number of nodes per hidden layer in discriminator
 hidden_size_D = 8;
 
@@ -37,37 +40,8 @@ batchsize = 100;
 % one update of the generator
 k = 3;
 
-discriminator_weights = containers.Map('KeyType','uint32','ValueType','any');
-discriminator_biases = containers.Map('KeyType','uint32','ValueType','any');
-
-% w1 : first layer weights: hidden_size_D x noise_dim
-discriminator_weights(1) = normrnd(0,init_dev,[hidden_size_D,1]);
-% b1: first layer bias
-discriminator_biases(1) = zeros(hidden_size_D,1);
-% w2 : second layer weights: 1 x hidden_size_D
-discriminator_weights(2) = normrnd(0,init_dev,[hidden_size_D,hidden_size_D]);
-% b2: second layer bias
-discriminator_biases(2) = zeros(hidden_size_D,1);
-% w2 : second layer weights: 1 x hidden_size_D
-discriminator_weights(3) = normrnd(0,init_dev,[hidden_size_D,hidden_size_D]);
-% b2: second layer bias
-discriminator_biases(3) = zeros(hidden_size_D,1);
-% w3 : second layer weights: 1 x hidden_size_G
-discriminator_weights(4) = normrnd(0,init_dev,[1,hidden_size_D]);
-% b3: second layer bias
-discriminator_biases(4) = zeros(1,1);
-
-generator_weights = containers.Map('KeyType','uint32','ValueType','any');
-generator_biases = containers.Map('KeyType','uint32','ValueType','any');
-
-% w1 : first layer weights: hidden_size_G x input_dim
-generator_weights(1) = normrnd(0,init_dev,[hidden_size_G,1]);
-% b1: first layer bias
-generator_biases(1) = zeros(hidden_size_G,1);
-% w2 : second layer weights: output_dim x hidden_size_G
-generator_weights(2) = normrnd(0,init_dev,[1,hidden_size_G]);
-% b2: second layer bias
-generator_biases(2) = zeros(1,1);
+[ discriminator_biases, discriminator_weights ] = createNetwork( [input_dim,hidden_size_D,hidden_size_D,hidden_size_D,1], 0.1 );
+[ generator_biases, generator_weights ] = createNetwork( [noise_dim,hidden_size_G,input_dim], 0.1 );
 
 % plot the original distribution
 figure;

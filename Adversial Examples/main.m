@@ -29,25 +29,7 @@ alpha = 0.2;
 batchsize = 100;
 batches = n/batchsize;
 
-% initalization of weights
-tmp = 6/(sqrt(d+10));
-
-
-weights = containers.Map('KeyType','uint32','ValueType','any');
-biases = containers.Map('KeyType','uint32','ValueType','any');
-
-% w1 : first layer weights: 256 x 784
-weights(1) = 2*tmp*rand(256,784)-tmp;
-% b1: first layer bias
-biases(1) = zeros(256,1);
-% w2 : second layer weights: 50 x 256
-weights(2) = 2*tmp*rand(50,256)-tmp;
-% b2: second layer bias
-biases(2) = zeros(50,1);
-% w2 : second layer weights: 10 x 50
-weights(3) = 2*tmp*rand(10,50)-tmp;
-% b2: second layer bias
-biases(3) = zeros(10,1);
+[ biases, weights ] = createNetwork( [784,256,50,10], 0.1 );
 
 for epoch = 1 : epochs
     for b = 1 : batches        
