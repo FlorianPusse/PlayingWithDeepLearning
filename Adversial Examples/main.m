@@ -1,4 +1,6 @@
 addpath('../data/mnist');
+addpath('../functions');
+
 X = loadMNISTImages('train-images.idx3-ubyte')';
 Y = loadMNISTLabels('train-labels.idx1-ubyte');
 Xtest = loadMNISTImages('t10k-images.idx3-ubyte')';
@@ -7,7 +9,7 @@ Y = Y + 1;
 Ytest = Ytest + 1;
 
 % epsilon as defined in the paper
-epsilon = 0.20;
+epsilon = 0.15;
 
 % number of epochs
 epochs = 10;
@@ -31,45 +33,38 @@ batches = n/batchsize;
 tmp = 6/(sqrt(d+10));
 
 
+weights = containers.Map('KeyType','uint32','ValueType','any');
+biases = containers.Map('KeyType','uint32','ValueType','any');
+
 % w1 : first layer weights: 256 x 784
-w1 = 2*tmp*rand(256,784)-tmp;
+weights(1) = 2*tmp*rand(256,784)-tmp;
 % b1: first layer bias
-b1 = zeros(256,1);
+biases(1) = zeros(256,1);
 % w2 : second layer weights: 50 x 256
-w2 = 2*tmp*rand(50,256)-tmp;
+weights(2) = 2*tmp*rand(50,256)-tmp;
 % b2: second layer bias
-b2 = zeros(50,1);
+biases(2) = zeros(50,1);
 % w2 : second layer weights: 10 x 50
-w3 = 2*tmp*rand(10,50)-tmp;
+weights(3) = 2*tmp*rand(10,50)-tmp;
 % b2: second layer bias
-b3 = zeros(10,1);
+biases(3) = zeros(10,1);
 
 for epoch = 1 : epochs
-    for b = 1 : batches
-        acc_b1_grad = zeros(256,1);
-        acc_w1_grad = zeros(256,784);
-        acc_b2_grad = zeros(50,1);
-        acc_w2_grad = zeros(50,256);
-        acc_b3_grad = zeros(10,1);
-        acc_w3_grad = zeros(10,50);
-        
+    for b = 1 : batches        
         interval = (b-1)*batchsize + 1:b*batchsize;
         X_tmp = X(interval,:);
         Y_tmp = Y(interval,:);
         
-        [~, ~, b1_grad, w1_grad, b2_grad, w2_grad, b3_grad, w3_grad] = runVectorized(X_tmp,Y_tmp,b1,w1,b2,w2,b3,w3);.    
-        
-        b1 = b1 - alpha*b1_grad;
-        w1 = w1 - alpha*w1_grad;
-        b2 = b2 - alpha*b2_grad;
-        w2 = w2 - alpha*w2_grad;
-        b3 = b3 - alpha*b3_grad;
-        w3 = w3 - alpha*w3_grad;
+        [ ~, ~, bias_gradients, weight_gradients] = run( X_tmp, biases, weights,@sigmoid_activation,@sigmoid_activation,@(x) x-encodeY(Y_tmp), false);
+        gradientUpdate( biases, weights, bias_gradients, weight_gradients, alpha, false )
     end
     
-    [pred, x_grad, ~,~,~,~,~,~] = runVectorized(Xtest,Ytest,b1,w1,b2,w2,b3,w3);
+    if epoch + 1 < epochs
+        pred = run( Xtest, biases, weights,@sigmoid_activation,@sigmoid_activation,NaN, true);
+    else
+        [ pred, x_grad, ~, ~] = run( Xtest, biases, weights,@sigmoid_activation,@sigmoid_activation,@(x) x-encodeY(Ytest), false);
+    end
     [~, pred] = max(pred);
-    
     correct = sum(pred' == Ytest);
     
     display(strcat('Done epoch: ',num2str(epoch), '. Error rate: ',num2str(1 - correct/nTest)));
@@ -87,7 +82,7 @@ modifiedX(modifiedX < 0) = 0;
 modifiedX(modifiedX > 1) = 1;
 
 % predict labels of modified samples
-[modified_pred, ~, ~,~,~,~,~,~] = runVectorized(modifiedX,Ytest,b1,w1,b2,w2,b3,w3);
+ modified_pred = run( modifiedX, biases, weights,@sigmoid_activation,@sigmoid_activation, NaN, true);
 [~, modified_pred] = max(modified_pred);
 
 fuckedUp = (modified_pred' ~= Ytest) & correctlyClassified;
